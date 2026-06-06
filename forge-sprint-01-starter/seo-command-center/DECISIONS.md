@@ -46,3 +46,7 @@ Build a Claude Code plugin that audits SEO exports (Screaming Frog CSV format) a
 - `[15:57]` **File handle leaks in reporting** → Changed `open(path).read()` and `open(path).write()` to `with open(path) as f:` context managers in `seo_report()`, `seo_export()`, and dashboard GET handlers.
 - `[15:57]` **Hardcoded company branding** → Removed "NMG Technologies" hardcodes from `generate_title()` and `generate_meta()`; now accepts `company` parameter (default "Your Company") for configurability.
 - `[15:57]` **Hidden export robustness** → All changes assume CSV columns may differ, be empty, or contain unexpected values; code now degrades gracefully instead of crashing.
+- `[15:58]` **Dashboard silent error handling** → Fixed SSE parse errors silently failing; added `console.error()` logging for parse and connection errors in app.js.
+- `[15:58]` **Dashboard data validation** → Added null checks for `i.severity`, `i.type`, `data.urls`, `data.site` to prevent NaN and undefined display; added safe defaults.
+- `[15:58]` **Report link not clickable** → Changed exported event to render clickable link: `<a href='../outputs/report.html'>` instead of plain text description.
+- `[15:58]` **Dashboard connection loss handling** → Added `es.onerror` handler to show "connection lost" status in UI when SSE stream fails; helps debug deployment issues.

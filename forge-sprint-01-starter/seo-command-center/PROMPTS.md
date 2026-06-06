@@ -176,3 +176,16 @@ Find:
 - NaN handling
 
 Fix all robustness issues.
+
+7.Inspect dashboard.
+
+Verify:
+
+- issue counts update live
+- severity charts work
+- no crashes
+- report links work
+
+Suggest improvements.
+
+Apply low-risk fixes only.
