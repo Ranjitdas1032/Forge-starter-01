@@ -90,4 +90,36 @@ Low
 
 Do not edit files.
 
-3.
+3.Read AUDIT.md.
+
+Implement every missing rulebook detector.
+
+Required:
+
+- missing title
+- duplicate title
+- title too long
+- title too short
+- missing meta
+- duplicate meta
+- meta too long
+- missing h1
+- duplicate h1
+- 4xx
+- 5xx
+- redirects
+- redirect chains
+- redirect loops
+- thin content
+- orphan pages
+- non-indexable linked pages
+- slow pages
+
+Use deterministic Python logic.
+
+Do not use LLM calls.
+
+After edits explain:
+
+- files changed
+- detectors added
