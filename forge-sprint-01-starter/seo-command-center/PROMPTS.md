@@ -140,3 +140,26 @@ Location
 Edge Cases
 
 Report any mismatch.
+
+5.Implement fix generation.
+
+Create:
+
+outputs/titles_metas.csv
+
+outputs/redirect_map.csv
+
+Rules:
+
+Titles:
+30-60 chars
+
+Meta:
+50-155 chars
+
+Redirects:
+nearest valid target
+
+Use deterministic templates if model unavailable.
+
+6.
