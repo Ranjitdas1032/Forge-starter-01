@@ -60,4 +60,34 @@ Add:
 
 Do not modify code yet.
 
-2. ...
+2. Read:
+
+- CLAUDE.md
+- README.md
+- rulebook.md
+
+Inspect:
+
+- seo/detector.py
+- run.py
+- mcp/server.py
+
+Create AUDIT.md.
+
+List:
+
+- Missing detectors
+- Bugs
+- Rulebook violations
+- Hidden-export risks
+
+Rank:
+
+Critical
+High
+Medium
+Low
+
+Do not edit files.
+
+3.
