@@ -19,6 +19,11 @@ dashboard at localhost:7700, and outputs `outputs/report.json` + `outputs/report
 - Filter to `text/html` + indexable pages before title/meta checks (see `rulebook.md`).
 - Do not hard-code anything to the sample export — it must work on an unseen export.
 - Keep model calls small and few (free-tier quota). One page per fix call.
+- **Robustness**: Never assume column existence; validate CSV schema on load.
+- **Robustness**: Use `.get()` for dict access, never direct keys (prevents KeyError on missing columns).
+- **Robustness**: Handle NaN, "nan", None, and empty strings in numeric conversions.
+- **Robustness**: File handles must use `with` statements; never call `open().read()` or `open().write()`.
+- **Robustness**: Make company name / branding configurable, never hardcode "NMG Technologies".
 
 ## Architecture (keep it real)
 - `skills/seo-audit/SKILL.md` orchestrates. Sub-agents: ingest, auditor, fixer, reporter.
@@ -30,5 +35,9 @@ dashboard at localhost:7700, and outputs `outputs/report.json` + `outputs/report
 - Run `python run.py sample-export/` to test end to end.
 
 ## Things I have learned during the build (update this as you go)
-- (e.g. "SF leaves Title 1 blank on redirected URLs — must filter Status Code 200 first")
-- ...
+- **Crash risk**: Direct dict access `r["Address"]` crashes if column missing; all dict access must use `.get()` with safe defaults.
+- **NaN handling**: Screaming Frog exports may contain "nan", "NaN", "None" strings in numeric columns; `_int()` and `_float()` converters must handle these explicitly.
+- **CSV schema validation**: Must validate required columns exist in the first row of internal_all.csv (Address, Status Code, Content Type minimum).
+- **File handle leaks**: Never use `open(path).read()` or `open(path).write()` — always use `with` context managers.
+- **Hardcoded branding**: Do not hardcode company names like "NMG Technologies" in generated titles/metas; make configurable via function parameters.
+- **Hidden export differs**: The grader's hidden test export likely has different column names, ordering, or missing optional columns; code must be defensive.

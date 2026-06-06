@@ -162,4 +162,17 @@ nearest valid target
 
 Use deterministic templates if model unavailable.
 
-6.
+6.Assume hidden export differs completely.
+
+Review all code.
+
+Find:
+
+- hardcoded columns
+- hardcoded URLs
+- assumptions
+- crash risks
+- missing columns
+- NaN handling
+
+Fix all robustness issues.

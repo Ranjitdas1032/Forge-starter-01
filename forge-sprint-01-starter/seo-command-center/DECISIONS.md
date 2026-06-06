@@ -40,4 +40,9 @@ Build a Claude Code plugin that audits SEO exports (Screaming Frog CSV format) a
 ---
 
 ## My log
-- `[--:--]` ...
+- `[15:56]` **CSV schema validation on load** → Added required column checks (Address, Status Code, Content Type) in `load_rows()` to fail fast if export is malformed; prevents cascading KeyErrors downstream.
+- `[15:56]` **KeyError crash risk on missing columns** → Replaced all direct dict access `r["Address"]` with `r.get("Address", "")` throughout detector.py; the hidden test export may have different or missing columns.
+- `[15:57]` **NaN string handling** → Updated `_int()` and `_float()` to explicitly handle "nan", "NaN", "None", "n/a" strings (case-insensitive) before numeric conversion; SF exports sometimes contain these.
+- `[15:57]` **File handle leaks in reporting** → Changed `open(path).read()` and `open(path).write()` to `with open(path) as f:` context managers in `seo_report()`, `seo_export()`, and dashboard GET handlers.
+- `[15:57]` **Hardcoded company branding** → Removed "NMG Technologies" hardcodes from `generate_title()` and `generate_meta()`; now accepts `company` parameter (default "Your Company") for configurability.
+- `[15:57]` **Hidden export robustness** → All changes assume CSV columns may differ, be empty, or contain unexpected values; code now degrades gracefully instead of crashing.

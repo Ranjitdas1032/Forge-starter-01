@@ -93,14 +93,16 @@ def seo_recommend(recommendations: list) -> dict:
 def seo_report() -> dict:
     os.makedirs(OUT_DIR, exist_ok=True)
     p = os.path.join(OUT_DIR, "report.json")
-    json.dump(_report_obj(), open(p, "w", encoding="utf-8"), indent=2)
+    with open(p, "w", encoding="utf-8") as f:
+        json.dump(_report_obj(), f, indent=2)
     RUN["status"] = "done"; _emit("saved", {"path": p}); return {"path": p}
 
 
 def seo_export() -> dict:
     os.makedirs(OUT_DIR, exist_ok=True)
     p = os.path.join(OUT_DIR, "report.html")
-    open(p, "w", encoding="utf-8").write(_render_html(_report_obj()))
+    with open(p, "w", encoding="utf-8") as f:
+        f.write(_render_html(_report_obj()))
     _emit("exported", {"path": p}); return {"path": p}
 
 
@@ -143,10 +145,18 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path in ("/", "/index.html"):
             p = os.path.join(DASH_DIR, "index.html")
-            self._send(200, open(p, encoding="utf-8").read() if os.path.exists(p) else "no dashboard")
+            if os.path.exists(p):
+                with open(p, encoding="utf-8") as f:
+                    self._send(200, f.read())
+            else:
+                self._send(200, "no dashboard")
         elif self.path == "/app.js":
             p = os.path.join(DASH_DIR, "app.js")
-            self._send(200, open(p, encoding="utf-8").read() if os.path.exists(p) else "", "application/javascript")
+            if os.path.exists(p):
+                with open(p, encoding="utf-8") as f:
+                    self._send(200, f.read(), "application/javascript")
+            else:
+                self._send(200, "", "application/javascript")
         elif self.path == "/state":
             self._send(200, json.dumps({k: v for k, v in RUN.items() if k != "rows"}), "application/json")
         elif self.path == "/events":

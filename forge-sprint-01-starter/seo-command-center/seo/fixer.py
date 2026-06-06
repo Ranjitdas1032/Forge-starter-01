@@ -48,64 +48,54 @@ def _truncate_meta(text: str, max_chars: int = 155) -> str:
     return text.strip()
 
 
-def _ensure_length(text: str, min_chars: int, max_chars: int) -> str:
+def _ensure_length(text: str, min_chars: int, max_chars: int, company: str = "Your Company") -> str:
     """Ensure text is between min and max chars, padding if needed."""
     text = (text or "").strip()
     if len(text) >= min_chars:
         return _truncate_title(text, max_chars)
-    # Pad with generic text to meet minimum
-    padding = " | NMG Technologies" if len(text) + 18 <= max_chars else ""
+    padding = f" | {company}" if len(text) + len(company) + 3 <= max_chars else ""
     return _truncate_title(text + padding, max_chars) if padding else text
 
 
-def generate_title(row: dict) -> str:
+def generate_title(row: dict, company: str = "Your Company") -> str:
     """Generate a fixed title (30-60 chars) from row data."""
     existing = (row.get("Title 1") or "").strip()
     h1 = (row.get("H1-1") or "").strip()
     h2 = (row.get("H2-1") or "").strip()
     url = row.get("Address", "")
 
-    # Try combinations to find a good title
     candidates = []
 
-    # 1. Use existing if good length
     if existing and 30 <= len(existing) <= 60:
         candidates.append(existing)
 
-    # 2. H1 combined with H2
     if h1 and h2:
         candidates.append(f"{h1} - {h2}")
 
-    # 3. H1 with domain
     if h1:
-        candidates.append(f"{h1} | NMG Technologies")
+        candidates.append(f"{h1} | {company}")
 
-    # 4. H1 alone (if reasonable)
     if h1 and 15 <= len(h1) <= 65:
         candidates.append(h1)
 
-    # 5. Existing title (truncated)
     if existing:
         candidates.append(existing)
 
-    # 6. From URL
     candidates.append(_extract_domain_title(url))
 
-    # Find best candidate within range
     for cand in candidates:
         cand = _truncate_title(cand, 60)
         if 30 <= len(cand) <= 60:
             return cand
 
-    # Fallback: pad to minimum length
     best = _truncate_title(candidates[0] if candidates else "Page", 60)
     if len(best) < 30:
-        best = best + " | NMG" if len(best) + 6 <= 60 else best
+        best = best + f" | {company[:10]}" if len(best) + 12 <= 60 else best
 
     return _truncate_title(best, 60)
 
 
-def generate_meta(row: dict) -> str:
+def generate_meta(row: dict, company: str = "our site") -> str:
     """Generate a fixed meta description (50-155 chars) from row data."""
     existing = (row.get("Meta Description 1") or "").strip()
     h1 = (row.get("H1-1") or "").strip()
@@ -113,7 +103,6 @@ def generate_meta(row: dict) -> str:
     title = (row.get("Title 1") or "").strip()
     url = row.get("Address", "")
 
-    # Try to build from available text
     if existing and 50 <= len(existing) <= 155:
         candidate = existing
     elif h1 and h2:
@@ -121,13 +110,11 @@ def generate_meta(row: dict) -> str:
     elif h1:
         candidate = _truncate_meta(f"{h1}. Learn more about this topic.", 155)
     elif title and len(title) >= 20:
-        candidate = _truncate_meta(f"{title} - Visit us for more information.", 155)
+        candidate = _truncate_meta(f"{title} - Visit {company} for more information.", 155)
     else:
-        # Fallback: generic from domain
-        domain = urlparse(url).netloc or "our site"
+        domain = company or "our site"
         candidate = _truncate_meta(f"Discover more content on {domain}.", 155)
 
-    # Ensure at least 50 chars
     if len(candidate) < 50:
         candidate = candidate + " " * (50 - len(candidate))
 
@@ -163,21 +150,18 @@ def find_nearest_target(broken_url: str, valid_urls: list[str]) -> str | None:
         return valid_urls[0] if valid_urls else None
 
 
-def generate_fixes(rows: list[dict], issues: list[dict], detector=None) -> tuple[list[dict], list[dict]]:
+def generate_fixes(rows: list[dict], issues: list[dict], detector=None, company: str = "Your Company") -> tuple[list[dict], list[dict]]:
     """Generate title/meta and redirect fixes from detected issues."""
     titles_metas_fixes = []
     redirect_fixes = []
 
-    # Build set of valid (200, indexable, HTML) URLs for redirect targeting
     if detector is None:
         from . import detector
     html = [r for r in rows if detector.is_html(r)]
-    valid_urls = [r["Address"] for r in html if detector.is_200(r) and detector.indexable(r)]
+    valid_urls = [r.get("Address", "") for r in html if detector.is_200(r) and detector.indexable(r) and r.get("Address")]
 
-    # Index rows by URL for quick lookup
-    rows_by_url = {r.get("Address"): r for r in rows}
+    rows_by_url = {r.get("Address", ""): r for r in rows if r.get("Address")}
 
-    # Collect all URLs that need fixes (title or meta issues)
     urls_to_fix = set()
     title_issues = {
         "missing_title", "title_too_long", "title_too_short", "duplicate_title"
@@ -190,16 +174,14 @@ def generate_fixes(rows: list[dict], issues: list[dict], detector=None) -> tuple
         if issue["type"] in title_issues or issue["type"] in meta_issues:
             urls_to_fix.update(issue.get("affected_urls", []))
 
-    # Generate fixes for each affected URL (both title and meta in one record)
     for url in sorted(urls_to_fix):
         if url in rows_by_url:
             row = rows_by_url[url]
             old_title = (row.get("Title 1") or "").strip()
             old_meta = (row.get("Meta Description 1") or "").strip()
-            new_title = generate_title(row)
-            new_meta = generate_meta(row)
+            new_title = generate_title(row, company)
+            new_meta = generate_meta(row, company.split()[0] if company else "us")
 
-            # Add fix if either title or meta changed
             if new_title != old_title or new_meta != old_meta:
                 titles_metas_fixes.append({
                     "url": url,
@@ -209,18 +191,18 @@ def generate_fixes(rows: list[dict], issues: list[dict], detector=None) -> tuple
                     "new_meta": new_meta
                 })
 
-    # Process redirect issues
     redirect_issues = {"broken_link", "server_error"}
     for issue in issues:
         if issue["type"] in redirect_issues:
             for url in issue.get("affected_urls", []):
-                target = find_nearest_target(url, valid_urls)
-                if target and target != url:
-                    redirect_fixes.append({
-                        "from": url,
-                        "to": target,
-                        "reason": f"Broken link ({issue['type']}) → nearest valid page"
-                    })
+                if url:
+                    target = find_nearest_target(url, valid_urls)
+                    if target and target != url:
+                        redirect_fixes.append({
+                            "from": url,
+                            "to": target,
+                            "reason": f"Broken link ({issue['type']}) → nearest valid page"
+                        })
 
     return titles_metas_fixes, redirect_fixes
 

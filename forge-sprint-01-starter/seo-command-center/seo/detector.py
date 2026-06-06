@@ -18,26 +18,39 @@ from collections import defaultdict
 def load_rows(export_dir: str) -> list[dict]:
     path = os.path.join(export_dir, "internal_all.csv")
     with open(path, encoding="utf-8-sig", newline="") as f:
-        return list(csv.DictReader(f))
+        rows = list(csv.DictReader(f))
+        if not rows:
+            raise ValueError("CSV is empty")
+        required = {"Address", "Status Code", "Content Type"}
+        missing = required - set(rows[0].keys() or {})
+        if missing:
+            raise ValueError(f"Missing required columns: {missing}")
+        return rows
 
 
 def _int(v, default=0):
     try:
-        return int(float(str(v).strip()))
-    except Exception:
+        s = str(v).strip().lower()
+        if s in ("nan", "none", "", "n/a"):
+            return default
+        return int(float(s))
+    except (ValueError, TypeError):
         return default
 
 
 def _float(v, default=0.0):
     try:
-        return float(str(v).strip())
-    except Exception:
+        s = str(v).strip().lower()
+        if s in ("nan", "none", "", "n/a"):
+            return default
+        return float(s)
+    except (ValueError, TypeError):
         return default
 
 
-def is_html(r):  return "text/html" in (r.get("Content Type", "") or "").lower()
-def is_200(r):   return _int(r.get("Status Code")) == 200
-def indexable(r): return (r.get("Indexability", "") or "").strip().lower() == "indexable"
+def is_html(r):  return "text/html" in ((r.get("Content Type") or "") or "").lower()
+def is_200(r):   return _int(r.get("Status Code", 0)) == 200
+def indexable(r): return ((r.get("Indexability") or "") or "").strip().lower() == "indexable"
 
 
 def detect(rows: list[dict]) -> list[dict]:
@@ -56,68 +69,74 @@ def detect(rows: list[dict]) -> list[dict]:
 
     # --- Titles (indexable 200 pages only) ---
     add("missing_title", "High",
-        [r["Address"] for r in idx200 if not (r.get("Title 1", "") or "").strip()],
+        [r.get("Address", "") for r in idx200 if not (r.get("Title 1", "") or "").strip() if r.get("Address")],
         "Indexable pages with no title tag.")
 
     by_title = defaultdict(list)
     for r in idx200:
-        t = (r.get("Title 1", "") or "").strip()
-        if t:
-            by_title[t].append(r["Address"])
+        addr = r.get("Address", "")
+        if addr:
+            t = (r.get("Title 1", "") or "").strip()
+            if t:
+                by_title[t].append(addr)
     dup_t = [u for urls in by_title.values() if len(urls) > 1 for u in urls]
     add("duplicate_title", "High", dup_t, "Pages sharing an identical title.")
 
     add("title_too_long", "Medium",
-        [r["Address"] for r in idx200
-         if _int(r.get("Title 1 Pixel Width")) > 561 or _int(r.get("Title 1 Length")) > 60],
+        [r.get("Address", "") for r in idx200
+         if (_int(r.get("Title 1 Pixel Width", 0)) > 561 or _int(r.get("Title 1 Length", 0)) > 60) and r.get("Address")],
         "Titles likely truncated in search results.")
 
     add("title_too_short", "Low",
-        [r["Address"] for r in idx200
-         if (r.get("Title 1", "") or "").strip() and _int(r.get("Title 1 Length")) < 30],
+        [r.get("Address", "") for r in idx200
+         if (r.get("Title 1", "") or "").strip() and _int(r.get("Title 1 Length", 0)) < 30 and r.get("Address")],
         "Titles may not display full content in search results.")
 
     # --- Meta descriptions (indexable 200 pages only) ---
     add("missing_meta_description", "Medium",
-        [r["Address"] for r in idx200 if not (r.get("Meta Description 1", "") or "").strip()],
+        [r.get("Address", "") for r in idx200 if not (r.get("Meta Description 1", "") or "").strip() and r.get("Address")],
         "Indexable pages with no meta description.")
 
     by_meta = defaultdict(list)
     for r in idx200:
-        m = (r.get("Meta Description 1", "") or "").strip()
-        if m:
-            by_meta[m].append(r["Address"])
+        addr = r.get("Address", "")
+        if addr:
+            m = (r.get("Meta Description 1", "") or "").strip()
+            if m:
+                by_meta[m].append(addr)
     dup_m = [u for urls in by_meta.values() if len(urls) > 1 for u in urls]
     add("duplicate_meta_description", "Medium", dup_m,
         "Pages sharing an identical meta description.")
 
     add("meta_description_too_long", "Low",
-        [r["Address"] for r in idx200 if _int(r.get("Meta Description 1 Length")) > 155],
+        [r.get("Address", "") for r in idx200 if _int(r.get("Meta Description 1 Length", 0)) > 155 and r.get("Address")],
         "Meta descriptions truncated in search results.")
 
     # --- H1 tags (status 200 pages, not just indexable) ---
     html200 = [r for r in html if is_200(r)]
     add("missing_h1", "Medium",
-        [r["Address"] for r in html200 if not (r.get("H1-1", "") or "").strip()],
+        [r.get("Address", "") for r in html200 if not (r.get("H1-1", "") or "").strip() and r.get("Address")],
         "Pages with no H1 tag.")
 
     by_h1 = defaultdict(list)
     for r in idx200:
-        h = (r.get("H1-1", "") or "").strip()
-        if h:
-            by_h1[h].append(r["Address"])
+        addr = r.get("Address", "")
+        if addr:
+            h = (r.get("H1-1", "") or "").strip()
+            if h:
+                by_h1[h].append(addr)
     dup_h1 = [u for urls in by_h1.values() if len(urls) > 1 for u in urls]
     add("duplicate_h1", "Low", dup_h1, "Pages sharing an identical H1 tag.")
 
     # --- Response codes (HTML only) ---
     add("broken_link", "High",
-        [r["Address"] for r in html if 400 <= _int(r.get("Status Code")) <= 499],
+        [r.get("Address", "") for r in html if (400 <= _int(r.get("Status Code", 0)) <= 499) and r.get("Address")],
         "URLs returning a client error (4xx).")
     add("server_error", "High",
-        [r["Address"] for r in html if 500 <= _int(r.get("Status Code")) <= 599],
+        [r.get("Address", "") for r in html if (500 <= _int(r.get("Status Code", 0)) <= 599) and r.get("Address")],
         "URLs returning a server error (5xx).")
     add("redirect", "Medium",
-        [r["Address"] for r in html if 300 <= _int(r.get("Status Code")) <= 399],
+        [r.get("Address", "") for r in html if (300 <= _int(r.get("Status Code", 0)) <= 399) and r.get("Address")],
         "URLs that redirect (3xx).")
 
     # --- Redirect chains and loops ---
@@ -150,22 +169,22 @@ def detect(rows: list[dict]) -> list[dict]:
 
     # --- Content quality ---
     add("thin_content", "Low",
-        [r["Address"] for r in idx200 if _int(r.get("Word Count")) < 200],
+        [r.get("Address", "") for r in idx200 if _int(r.get("Word Count", 0)) < 200 and r.get("Address")],
         "Pages with < 200 words (thin content).")
 
     # --- Page structure ---
     add("orphan_page", "Medium",
-        [r["Address"] for r in idx200 if _int(r.get("Inlinks")) == 0],
+        [r.get("Address", "") for r in idx200 if _int(r.get("Inlinks", 0)) == 0 and r.get("Address")],
         "Indexable pages with zero internal links in.")
 
     add("non_indexable_but_linked", "Medium",
-        [r["Address"] for r in html
-         if not indexable(r) and _int(r.get("Inlinks", 0)) > 0],
+        [r.get("Address", "") for r in html
+         if not indexable(r) and _int(r.get("Inlinks", 0)) > 0 and r.get("Address")],
         "Non-indexable pages that are internally linked.")
 
     # --- Performance ---
     add("slow_page", "Low",
-        [r["Address"] for r in rows if _float(r.get("Response Time")) > 1.0],
+        [r.get("Address", "") for r in rows if _float(r.get("Response Time", 0.0)) > 1.0 and r.get("Address")],
         "Pages with response time > 1.0 second.")
 
     return issues
