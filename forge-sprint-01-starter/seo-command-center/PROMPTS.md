@@ -123,3 +123,20 @@ After edits explain:
 
 - files changed
 - detectors added
+
+4.Read rulebook.md.
+
+Compare every detector against the rulebook.
+
+Create:
+
+RULEBOOK_CHECK.md
+
+Table:
+
+Rule
+Implemented?
+Location
+Edge Cases
+
+Report any mismatch.
