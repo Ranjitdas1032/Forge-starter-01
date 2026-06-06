@@ -189,3 +189,26 @@ Verify:
 Suggest improvements.
 
 Apply low-risk fixes only.
+
+8. Run complete verification.
+
+Execute:
+
+python run.py ../sample-export --no-dashboard
+
+Check:
+
+1. report.json generated
+2. report.html generated
+3. titles_metas.csv generated
+4. redirect_map.csv generated
+5. schema validation passes
+6. no crashes
+
+Create VERIFY.md.
+
+Include:
+
+commands run
+results
+remaining risks
