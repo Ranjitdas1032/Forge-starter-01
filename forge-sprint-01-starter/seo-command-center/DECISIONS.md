@@ -11,13 +11,31 @@ Format:
 
 ---
 
-## Example (replace with your own)
-- `[10:20]` Chose plain-csv parsing over pandas → fewer deps, fast enough for 5k rows, model
-  quota saved for the fixer.
-- `[11:05]` Title detector over-counted duplicates → realized non-indexable pages were
-  included; added an indexable+200 filter (per rulebook).
-- `[12:40]` Dashboard wasn't updating live → MCP tool wasn't emitting the SSE event; added
-  `_emit("issue", row)` in extract.
+## Project Context
+
+**Project Goal:**
+Build a Claude Code plugin that audits SEO exports (Screaming Frog CSV format) against deterministic rules, detects issues, prioritizes them, generates fixes, and renders a live dashboard + exportable HTML/JSON reports.
+
+**Architecture Summary:**
+- `skills/seo-audit/SKILL.md` — main orchestrator
+- `agents/` — sub-agents: ingest, auditor, fixer, reporter (each handles one phase)
+- `seo/detector.py` — deterministic rule-based issue detection (CSV/pandas)
+- `mcp/server.py` — MCP tool registry + live dashboard (localhost:7700)
+- `dashboard/` — HTML/JS cockpit for real-time issue viewing
+- `outputs/` — generated `report.json` (must match `report.schema.json`) + `report.html`
+
+**Rulebook Summary (from rulebook.md):**
+- Pre-filter: only `text/html` content; duplicates only on Indexable 200 pages
+- 17 issue types across: titles, meta descriptions, H1s, links (broken/redirect/chains), content (thin/orphan), security, indexability
+- Severity: High / Medium / Low
+- Redirect chains: build {Address → Redirect URL} map; chain = redirect target that is itself a key in that map
+- Count = affected URLs; no hard-coded URLs
+
+**Build Plan:**
+1. Complete `seo/detector.py` for full rulebook coverage (17 issue types)
+2. Implement fixer agent (title/meta rewrites within limits, redirect mapping)
+3. Improve dashboard & report formatting for client readiness
+4. Commit incrementally (≥10 commits); maintain audit trail
 
 ---
 

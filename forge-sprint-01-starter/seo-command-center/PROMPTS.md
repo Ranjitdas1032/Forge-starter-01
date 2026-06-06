@@ -1,4 +1,4 @@
-# PROMPTS.md — my key prompts log
+# PROMPTS.md — key prompts log
 
 Keep the handful of prompts that actually moved the build. Not every message — the ones that
 mattered: the system/sub-agent prompts, the ones you iterated on, the "this finally worked"
@@ -11,17 +11,53 @@ Format per entry:
 
 ---
 
-## Example (replace with your own)
+## Project Context
 
-- **Prompt:** "Extend seo/detector.py to detect redirect chains: build a map of {Address ->
-  Redirect URL} for all 3xx rows, then a chain exists when a Redirect URL is itself a key in
-  that map. Add a redirect_chain issue (High). Run python seo/detector.py and show counts."
-- **For:** adding the redirect-chain detector
-- **Revised?** Yes — first version flagged single redirects as chains; added the "target is
-  also a redirecting URL" condition.
+**Project Goal:**
+Build a Claude Code plugin that audits SEO exports (Screaming Frog CSV format) against deterministic rules, detects issues, prioritizes them, generates fixes, and renders a live dashboard + exportable HTML/JSON reports.
+
+**Architecture Summary:**
+- `skills/seo-audit/SKILL.md` — main orchestrator
+- `agents/` — sub-agents: ingest, auditor, fixer, reporter (each handles one phase)
+- `seo/detector.py` — deterministic rule-based issue detection (CSV/pandas)
+- `mcp/server.py` — MCP tool registry + live dashboard (localhost:7700)
+- `dashboard/` — HTML/JS cockpit for real-time issue viewing
+- `outputs/` — generated `report.json` (must match `report.schema.json`) + `report.html`
+
+**Rulebook Summary (from rulebook.md):**
+- Pre-filter: only `text/html` content; duplicates only on Indexable 200 pages
+- 17 issue types across: titles, meta descriptions, H1s, links (broken/redirect/chains), content (thin/orphan), security, indexability
+- Severity: High / Medium / Low
+- Redirect chains: build {Address → Redirect URL} map; chain = redirect target that is itself a key in that map
+- Count = affected URLs; no hard-coded URLs
+
+**Build Plan:**
+1. Complete `seo/detector.py` for full rulebook coverage (17 issue types)
+2. Implement fixer agent (title/meta rewrites within limits, redirect mapping)
+3. Improve dashboard & report formatting for client readiness
+4. Commit incrementally (≥10 commits); maintain audit trail
 
 ---
 
 ## My prompts
-1. ...
+
+1. Read:
+- CLAUDE.md
+- README.md
+- rulebook.md
+
+Create or update:
+
+- PROMPTS.md
+- DECISIONS.md
+
+Add:
+
+1. Project goal
+2. Architecture summary
+3. Rulebook summary
+4. Build plan
+
+Do not modify code yet.
+
 2. ...
